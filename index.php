@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Instagram parser</title>
+</head>
+
+<body>
+    <?php
+    require "functions.php";
+    $fileList = glob('data/*.zip');
+    $oldfiles = glob("data/extracted/*");
+    $zip = new ZipArchive;
+    foreach ($fileList as $filename) {
+        $res = $zip->open($filename);
+        if ($res === TRUE) {
+            if (!(in_array("data/extracted/" . mb_substr($filename, 5, strlen($filename) - 9), $oldfiles))) {
+                $zip->extractTo('data/extracted/' . mb_substr($filename, 5, strlen($filename) - 9));
+                $zip->close();
+                //echo "rozbaleno<br>\n";
+            } else {
+                //echo "soubor už byl rozbalen<br>\n";
+            }
+        } else {
+            //echo "zip nenalezen<br>\n";
+        }
+    }
+
+    $fileList = glob('data/extracted/*');
+    foreach ($fileList as $filename) {
+        $f_jsons = glob($filename . '/*.json');
+        foreach ($f_jsons as $f_json) {
+            //$f_json = $f_jsons[1];
+            $handle = load_file($f_json, "r");
+            if ($handle != "{}") {
+                if (preg_match("/\/[A-Za-z0-9]*\.json/", $f_json, $resault)) {
+                    echo "<a href=\"index.php?category=" . mb_substr($resault[0], 1, strlen($resault[0]) - 6) . "\">" . mb_substr($resault[0], 1, strlen($resault[0]) - 6) . "</a><br>";
+                }
+            }
+        }
+    }
+    if (isset($_GET["category"])) {
+        foreach ($fileList as $filename) {
+            $f_jsons = glob($filename . '/*.json');
+            $user = mb_substr($filename, 15);
+            $user = explode("_", $user);
+            $user = $user[0];
+            foreach ($f_jsons as $f_json) {
+                if (preg_match("/\/[A-Za-z0-9]*\.json/", $f_json, $resault) and mb_substr($resault[0], 1, strlen($resault[0]) - 6) == $_GET["category"]) {
+                    echo "<br><br>i'm in " . mb_substr($resault[0], 1, strlen($resault[0]) - 6) . "<br>";
+                    $handle = load_file($f_json, "r");
+                    echo "<br>";
+                    $j_array = json_decode($handle, true);
+
+                    $peoples = array();
+                    switch ($_GET["category"]) {
+                        case "messages":
+                            //zpracování zpráv
+                            $messages = array();
+                            foreach ($j_array as $name => $item) {
+                                $in = false;
+                                foreach ($item["participants"] as $par) {
+                                    if (!(in_array($par, $peoples)) or $par == $user) {
+                                        $in = true;
+                                    } else {
+                                        $in = false;
+                                        break;
+                                    }
+                                }
+                                if ($in) {
+                                    $messages[$name] = array();
+                                    foreach ($item["participants"] as $key => $par) {
+                                        if (!(in_array($par, $peoples))) {
+                                            $peoples[] = $par;
+                                        }
+                                        $messages[$name]["participants"][] = $par;
+                                    }
+                                    $count = array();
+                                    $messages[$name]["messages"]["all"] = count($item["conversation"]);
+                                    foreach ($item["conversation"] as $idk) {
+                                        if (isset($count[$idk["sender"]])) {
+                                            $count[$idk["sender"]] += 1;
+                                        } else {
+                                            $count[$idk["sender"]] = 1;
+                                        }
+                                    }
+                                    foreach ($count as $key => $idk) {
+                                        $messages[$name]["messages"][$key] = $idk;
+                                    }
+                                }
+                            }
+                            //srovnání podle počtu zpráv
+                            usort($messages, function ($first, $second) {
+                                return $first["messages"]["all"] < $second["messages"]["all"];
+                            });
+                            //vypsání zpráv
+                            foreach ($messages as $k => $item) {
+                                echo "účastníci zpráv: ";
+                                foreach ($item["participants"] as $key => $par) {
+                                    if ($key == 0) {
+                                        echo $par . " ";
+                                    } else {
+                                        echo ", " . $par . " ";
+                                    }
+                                }
+                                echo "<br>";
+                                foreach ($item["messages"] as $key => $mes) {
+                                    if ($key == "all") {
+                                        echo "celkový počet žpráv: " . $mes;
+                                        echo "<br>";
+                                    } else {
+                                        echo "zpráv od " . $key . ": " . $mes;
+                                        echo "<br>";
+                                    }
+                                }
+                                echo "<br>";
+                                echo "<br>";
+                            }
+                            break;
+                        default:
+                            foreach ($j_array as $item) {
+                                print_r($item);
+                                echo "<br><br>";
+                            }
+                            break;
+                    }
+                }
+            }
+        }
+    }
+    ?>
+</body>
+
+</html>
