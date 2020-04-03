@@ -58,66 +58,102 @@
                     $peoples = array();
                     switch ($_GET["category"]) {
                         case "messages":
-                            //zpracování zpráv
-                            $messages = array();
-                            foreach ($j_array as $name => $item) {
-                                $in = false;
-                                foreach ($item["participants"] as $par) {
-                                    if (!(in_array($par, $peoples)) or $par == $user) {
-                                        $in = true;
-                                    } else {
-                                        $in = false;
-                                        break;
+                            echo "<a href=\"index.php?category=messages\">zpět</a>";
+                            echo "<br><br>";
+                            if (isset($_GET["show"])) {
+                                foreach ($j_array as $name => $item) {
+                                    $par = explode(" ", $_GET["show"]);
+                                    $look = true;
+                                    foreach ($item["participants"] as $value) {
+                                        if (!(in_array($value, $par))) {
+                                            $look = false;
+                                            $break;
+                                        }
+                                    }
+                                    if ($look) {
+                                        echo "<b>zpravy od: " . str_replace(" ", ", ", $_GET["show"]) . "</b>";
+                                        echo "<br><br>";
+                                        foreach ($item["conversation"] as $mes) {
+                                            $time = explode("T", $mes["created_at"]);
+
+                                            $date = explode("-", $time[0]);
+                                            $date = $date[2] . "." . $date[1] . " " . $date[0];
+
+                                            $time = explode(":", $time[1]);
+                                            $time = $time[0] . ":" . $time[1] . ":" . substr($time[2], 0, 2);
+
+                                            $mes["created_at"] = $time . " - " . $date;
+
+                                            echo "<b>" . $mes["sender"] . "</b> " . $mes["created_at"] . ": " . $mes["text"];
+                                            echo "<br>";
+                                        }
                                     }
                                 }
-                                if ($in) {
-                                    $messages[$name] = array();
-                                    foreach ($item["participants"] as $key => $par) {
-                                        if (!(in_array($par, $peoples))) {
-                                            $peoples[] = $par;
-                                        }
-                                        $messages[$name]["participants"][] = $par;
-                                    }
-                                    $count = array();
-                                    $messages[$name]["messages"]["all"] = count($item["conversation"]);
-                                    foreach ($item["conversation"] as $idk) {
-                                        if (isset($count[$idk["sender"]])) {
-                                            $count[$idk["sender"]] += 1;
+                            } else {
+                                //zpracování zpráv
+                                $messages = array();
+                                foreach ($j_array as $name => $item) {
+                                    $in = false;
+                                    foreach ($item["participants"] as $par) {
+                                        if (!(in_array($par, $peoples)) or $par == $user) {
+                                            $in = true;
                                         } else {
-                                            $count[$idk["sender"]] = 1;
+                                            $in = false;
+                                            break;
                                         }
                                     }
-                                    foreach ($count as $key => $idk) {
-                                        $messages[$name]["messages"][$key] = $idk;
+                                    if ($in) {
+                                        $messages[$name] = array();
+                                        foreach ($item["participants"] as $key => $par) {
+                                            if (!(in_array($par, $peoples))) {
+                                                $peoples[] = $par;
+                                            }
+                                            $messages[$name]["participants"][] = $par;
+                                        }
+                                        $count = array();
+                                        $messages[$name]["messages"]["all"] = count($item["conversation"]);
+                                        foreach ($item["conversation"] as $idk) {
+                                            if (isset($count[$idk["sender"]])) {
+                                                $count[$idk["sender"]] += 1;
+                                            } else {
+                                                $count[$idk["sender"]] = 1;
+                                            }
+                                        }
+                                        foreach ($count as $key => $idk) {
+                                            $messages[$name]["messages"][$key] = $idk;
+                                        }
                                     }
                                 }
-                            }
-                            //srovnání podle počtu zpráv
-                            usort($messages, function ($first, $second) {
-                                return $first["messages"]["all"] < $second["messages"]["all"];
-                            });
-                            //vypsání zpráv
-                            foreach ($messages as $k => $item) {
-                                echo "účastníci zpráv: ";
-                                foreach ($item["participants"] as $key => $par) {
-                                    if ($key == 0) {
-                                        echo $par . " ";
-                                    } else {
-                                        echo ", " . $par . " ";
+                                //srovnání podle počtu zpráv
+                                usort($messages, function ($first, $second) {
+                                    return $first["messages"]["all"] < $second["messages"]["all"];
+                                });
+                                //vypsání zpráv
+                                foreach ($messages as $k => $item) {
+                                    echo "účastníci zpráv: ";
+                                    foreach ($item["participants"] as $key => $par) {
+                                        if ($key == 0) {
+                                            echo $par . " ";
+                                            $href = $par;
+                                        } else {
+                                            echo ", " . $par . " ";
+                                            $href .= " " . $par;
+                                        }
                                     }
-                                }
-                                echo "<br>";
-                                foreach ($item["messages"] as $key => $mes) {
-                                    if ($key == "all") {
-                                        echo "celkový počet žpráv: " . $mes;
-                                        echo "<br>";
-                                    } else {
-                                        echo "zpráv od " . $key . ": " . $mes;
-                                        echo "<br>";
+                                    echo "<br>";
+                                    foreach ($item["messages"] as $key => $mes) {
+                                        if ($key == "all") {
+                                            echo "celkový počet žpráv: " . $mes;
+                                            echo "<br>";
+                                        } else {
+                                            echo "zpráv od " . $key . ": " . $mes;
+                                            echo "<br>";
+                                        }
                                     }
+                                    echo "<a href=\"index.php?category=messages&show=" . $href . "\">zobrazit zprávy</a>";
+                                    echo "<br>";
+                                    echo "<br>";
                                 }
-                                echo "<br>";
-                                echo "<br>";
                             }
                             break;
                         default:
