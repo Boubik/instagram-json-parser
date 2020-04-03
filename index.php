@@ -10,6 +10,7 @@
 
 <body>
     <?php
+    ini_set('max_execution_time', 0);
     require "functions.php";
     $fileList = glob('data/*.zip');
     $oldfiles = glob("data/extracted/*");
@@ -84,8 +85,10 @@
 
                                             $mes["created_at"] = $time . " - " . $date;
 
-                                            echo "<b>" . $mes["sender"] . "</b> " . $mes["created_at"] . ": " . $mes["text"];
-                                            echo "<br>";
+                                            if (isset($mes["text"])) {
+                                                echo "<b>" . $mes["sender"] . "</b> " . $mes["created_at"] . ": " . $mes["text"];
+                                                echo "<br>";
+                                            }
                                         }
                                     }
                                 }
